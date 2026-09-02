@@ -34,6 +34,10 @@ function inputValue(raw: string, field: 'play_list' | 'play_list_2') {
   return (matched?.[1] ?? raw).replace(/\s/g, '');
 }
 
+function containsField(raw: string, field: 'play_list' | 'play_list_2') {
+  return new RegExp(`\\(?${field}\\s*:`).test(raw);
+}
+
 function decodeSegment(raw: string, field: 'play_list' | 'play_list_2'): DecodedSegment {
   const value = inputValue(raw, field);
   if (!value) return { steps: [] };
@@ -103,8 +107,13 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
 
   const result = useMemo(() => {
-    const one = decodeSegment(first, 'play_list');
-    const two = decodeSegment(second, 'play_list_2');
+    // Either box may contain a complete Firebase log. Prefer explicit fields
+    // found anywhere in the pasted text, while retaining direct-value support.
+    const source = `${first}\n${second}`;
+    const oneInput = containsField(source, 'play_list') ? source : first;
+    const twoInput = containsField(source, 'play_list_2') ? source : second;
+    const one = decodeSegment(oneInput, 'play_list');
+    const two = decodeSegment(twoInput, 'play_list_2');
     const steps = [...one.steps, ...two.steps];
     return {
       one,
@@ -145,7 +154,7 @@ export default function Home() {
             <CardHeader className="gap-2">
               <CardTitle>输入记录</CardTitle>
               <CardDescription>
-                可直接粘贴编码，或含有 <code>play_list:</code> 字段的日志行。
+                可直接粘贴编码；完整 Firebase 日志粘贴到任意一个输入框即可自动提取两段。
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
